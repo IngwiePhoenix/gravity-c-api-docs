@@ -27,14 +27,27 @@ Scripting languages I have played with before include:
 
 ## TODO
 
-- [ ] `gravity_compiler_run`: Inspect parameters
-  - `uint32_t fileid`
-  - `uint32_t fileid`
 - [ ] `gravity_compiler_serialize_infile`: Find out what it _actually_ does.
 - [ ] Decide wether or not to document `gravity_ast.h`, `gravity_codegen.h`, `gravity_lexer.h` and `gravity.parser.h`
   - Those files are only required for modding.
   - The AST and Codegen functions may be used for writing debuggers of some sort.
   - New Syntax requires modifying the lexer and parser and maybe the AST.
+- [ ] `vm_transfer_cb`:
+  - What does this one do?
+  - For what does it actually return a boolean?
+- [ ] `gravity_vm_loadclosure`
+  - As far as I understand it, this function transfers a closure into the VM.
+  - Do I need to use this to utilize `runclosure`?
+- [ ] `gravity_vm_filter`: What does it filter?
+- [ ] `gravity_vm_initmodule`: Is this meant as part of the Module system?
+- [ ] `gravity_vm_memupdate`
+  - Does this function increase pre-allocated memory?
+  - Why does it take a `gravity_value_t` instead of an integer type as parameter?
+- [ ] `gravity_vm_maxmemblock`
+  - I bet this is meant as a counterpart to `memupdate`.
+  - What does it actually return - what is this value meant to be?
+- [ ] `gravity_vm_anonymous`: What does it return?
+- [ ] `marray_resize0`: Does it resize the array whilst emptying everything?
 
 # The cheat-sheet
 ## The structure
@@ -60,8 +73,8 @@ Basically, Gravity is split into several parts:
     1. `gravity_compiler_t *compiler`: This is the compiler you created previously.
     2. `const char *source`: The source that should be compiled.
     3. `size_t len`: The length of the source code (which means, your code does not need to be `NULL`-terminated).
-    4. `uint32_t fileid`: ???
-    5. `bool is_static`: ???
+    4. `uint32_t fileid`: A nummeric value that uniquely identifies sources included via the `#include` directive.
+    5. `bool is_static`: This parameter tells the compiler if the buffer passed in the `const char *source` parameter must be freed or not.
     6. `bool add_debug`: Add debugging information to the source (think `gcc -g`).
   * Returns a `gravity_closure_t*` which can now be executed. It essentially contains the compiled source, as a "program".
 - `json_t  *gravity_compiler_serialize (gravity_compiler_t *compiler, gravity_closure_t *closure);`
