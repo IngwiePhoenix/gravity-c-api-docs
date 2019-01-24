@@ -328,3 +328,113 @@ The following functions are all meant for the garbage collector. Their names are
 - `gravity_closure_t *gravity_vm_fastlookup (gravity_vm *vm, gravity_class_t *c, int index);`
   * Description: Perform a fast lookup on a class object.
   * Parameters:
+    1. `gravity_vm *vm`: The VM within which the lookup is to be performed.
+    2. `gravity_class_t *c`: The class in which the lookup is to be performed.
+    3. `int index`: The numeric index of the value to be returned.
+  * Returns the value at index `index` of class pointer `*c`.
+- ` void gravity_vm_setslot (gravity_vm *vm, gravity_value_t value, uint32_t index);`
+  * Description: Set a value in a specific slot.
+    - You will use this function _a lot_ when writing native bindings.
+    - Setting the return type of a native function is done using this function.
+  * Parameters:
+    1. `gravity_vm *vm`: The VM in which the slot is to be set.
+    2. `gravity_value_t value`: The value to be set.
+    3. `uint32_t index`: The index to which the value is to be assigned to.
+  * Returns nothing.
+- `gravity_value_t gravity_vm_getslot (gravity_vm *vm, uint32_t index);`
+  * Description: Retrive a value by it's index.
+  * Parameters:
+    1. `gravity_vm *vm`: The VM from which the value is to be retrived.
+    2. `uint32_t index`: The value's index.
+  * Returns the value at the specified index.
+- `void gravity_vm_setdata (gravity_vm *vm, void *data);`
+  * Description: Set native data to a VM instance.
+  * Parameters:
+    1. `gravity_vm *vm`: The VM to which the native data is to be assigned to.
+    2. `void *xdata`: The native data.
+  * Returns nothing.
+- `void *gravity_vm_getdata (gravity_vm *vm);`
+  * Description: Obtain native data attached to a VM.
+  * Parameters:
+    1. `gravity_vm *vm`: The VM whose attached native data is to be retrived.
+  * Returns a `void*`, pointing to native data.
+- `void gravity_vm_memupdate (gravity_vm *vm, gravity_int_t value);`: ???
+- `gravity_int_t gravity_vm_maxmemblock (gravity_vm *vm);`: ???
+- `gravity_value_t gravity_vm_get (gravity_vm *vm, const char *key);`:
+  * Description: Get a value within the VM by it's string-key.
+  * Parameters:
+    1. `gravity_vm *vm`: The VM from which data is to be retrived.
+    2. `const char *key`: The key.
+  * Returns the requested value.
+- `bool gravity_vm_set (gravity_vm *vm, const char *key, gravity_value_t value);`
+  * Description: Set a value in the VM by using a string-key.
+    - This is how you ultimatively add classes, functions and values to a VM from within native code.
+    - Use the above function to return such values.
+  * Parameters:
+    1. `gravity_vm *vm`: The VM into which the value is to be inserted.
+    2. `const char *key`: The key under which the value is to be inserted.
+    3. `gravity_value_t value`: The value.
+  * Returns wether setting the value was or was not a success.
+- `char *gravity_vm_anonymous (gravity_vm *vm);`: ???
+- `bool gravity_isopt_class (gravity_class_t *c);`: Returns wether the given class is an optional class or not.
+- `void gravity_opt_register (gravity_vm *vm);`: Register optional classes to the VM.
+- `void gravity_opt_free (void);`: Free the optional classes.
+
+### `shared/`
+#### `gravity_array.h`
+This is an array implementation - no, not your `a[]` arrays you already know, but with a few more functions - making this array implementation a little bit more object-oriented in a C-ish way. And, this is even used to working with array values in Gravity. It may not be obvious at first, but I will explain that later down below.
+
+All of the functions in here, are actually macros and the arrays are actually dynamic in growth.
+
+- `MARRAY_DEFAULT_SIZE`: The default size of an array.
+- `marray_t(type)`
+  * Use it like this: `typedef marray_t(some_c_type) my_array_type;`
+  * This macro generates a struct. So you don't _have_ to use `typedef`, but using it makes things a little bit more readable.
+- `marray_init(v)`
+  * Initialize an array.
+  * Example: `my_array_type arr; marray_init(arr);`
+- `marray_decl_init(_t,_v)`
+  * Same as above, but unified in one macro.
+  * Example: `marray_decl_init(my_array_type, arr);`
+- `marray_destroy(v)`
+  * Destroy an array. Like `free()`.
+- `marray_get(v, i)`: Get the `i`th value in array `v`.
+- `marray_pop(v)`: Pop the last value from `v`.
+- `marray_last(v)`: Get the last value from `v`.
+- `marray_size(v)`: Get the current size of the array.
+- `marray_max(v)`: Get the current maximal array size.
+  * Note: When pushing elements above the top boundry, the maximum changes.
+  * The maximum is changed with a left-shift, so the array grows towards the next bit.
+  * `2 << 1 = 4`
+- `marray_inc(v)`: Increase the array pointer by one.
+- `marray_dec(v)`: Decrease the array pointer by one.
+- `marray_nset(v,N)`: Set the current array pointer.
+- `marray_push(type, v, x)`: Insert value `x` into array `v` of type `type` at the current array pointer position.
+- `marray_resize(type, v, n)`: Resize the array `v` of type `type` by `n` slots.
+  * `type` is actually the type defined for the array to hold.
+  * `typedef marray_t(int)` would mean that `type` has to be `int`.
+- `marray_resize0(type, v, n)`: ???
+- `marray_npop(v,k)`: Pop an amount of elements `k` from array `v`.
+- `marray_reset(v,k)`: Essentially the same as `marray_nset(v,N)`.
+- `marray_reset0(v)`: Reset array `v` to zero elements.
+- `marray_set(v,i,x)`: Set value `x` in array `v` at position `i`.
+
+#### `gravity_delegate.h`
+This file defines the `gravity_delegate_t` structure, which is passed to the VM and the compiler. In fact, this file holds a couple of very important things:
+- Structures to describe errors (`enum error_type_t`, `struct error_desc_t`), which can be used in the error callbacks to generate very well described error messages.
+- Callback function definitions.
+- Bridge API definitions (to allow dynamic binding of functions/classes/etc. Only really well usable with Objective-C.)
+- Unit tests, file handling and optional class loading APIs.
+  * Note: `gravity_optclass_callback` does not need to be used to register native types!
+  * This callback is probably more intended to utilize `gravity_isopt_class(gravity_class_t*)` by returning a `char*` array of optional class names.
+  * This callback can also be used to improve semantic checking, as to make the parser and lexer aware of this optional class, so that symbol checks for defined symbols will pass, when this specific class is referenced.
+- The `gravity_delegate_t` struct.
+Taking a look at this file itself will explain mostly everything.
+
+#### `gravity_hash.h`
+Although it says just `hash` in the name, it actually is a hashtable implementation. Just like `gravity_array`, only it's relevant functions are found in here. Except for a few functions, all of them have a first parameter of `gravity_hash_t *hashtable`, which I will replace with `*self` in the descriptions, just to make reading a bit faster.
+
+- `gravity_hash_t *gravity_hash_create (uint32_t size, gravity_hash_compute_fn compute, gravity_hash_isequal_fn isequal, gravity_hash_iterate_fn free, void *data);`
+  * Description: Create a new hash table.
+  * Parameters:
+    1. `uint32_t`
