@@ -46,8 +46,17 @@ Scripting languages I have played with before include:
 - [ ] `gravity_vm_maxmemblock`
   - I bet this is meant as a counterpart to `memupdate`.
   - What does it actually return - what is this value meant to be?
-- [ ] `gravity_vm_anonymous`: What does it return?
-- [ ] `marray_resize0`: Does it resize the array whilst emptying everything?
+- [ ] What do these hashtable functions do?
+  - `gravity_vm_anonymous`
+  - `marray_resize0`
+  - `gravity_hash_lookup_cstring`
+  - `gravity_hash_compute_buffer`
+  - `gravity_hash_compute_int`
+  - `gravity_hash_compute_float`
+  - `gravity_hash_dump`
+  - `gravity_hash_resetfree`
+- [ ] `gravity_hash_iterate`: Does it's `void *data` argument temporarily overwrite the hashtable's original pointer boid by the `create` function?
+
 
 # The cheat-sheet
 ## The structure
@@ -450,4 +459,120 @@ Although it says just `hash` in the name, it actually is a hashtable implementat
 - `gravity_hash_t *gravity_hash_create (uint32_t size, gravity_hash_compute_fn compute, gravity_hash_isequal_fn isequal, gravity_hash_iterate_fn free, void *data);`
   * Description: Create a new hash table.
   * Parameters:
-    1. `uint32_t`
+    1. `uint32_t size`: The initial size of the hashtable.
+    2. `gravity_hash_compute_fn compute`: The hash computation function as a callback.
+      * Dfinition of `gravity_hash_compute_fn`: `uint32_t f(gravity_value_t key)`
+      * Description: Compute a key and return a hash for the given value.
+      * Parameters:
+        1. `gravity_value_t key`: The key whose hash is to be computed.
+      * Returns a hash represented as a `uint32_t`.
+    3. `gravity_hash_isequal_fn isequal`: A callback to check for hash equality.
+      * Definition of `gravity_hash_isequal_fn`: `bool f(gravity_value_t v1, gravity_value_t v2)`
+      * Parameters:
+        1. `gravity_value_t v1`: Left-hand comparsion operand.
+        2. `gravity_value_t v2`: Right-hand comparsion operand.
+      * Returns true, if the two values equal when hashed.
+        - I.e.: `md5(v1) == md5(v2)`
+    4. `ravity_hash_iterate_fn free`: A callback for iterating through the hashtable.
+      * Definition of `ravity_hash_iterate_fn`: `void f(gravity_hash_t *hashtable, gravity_value_t key, gravity_value_t value, void *data)`
+      * Description: A function to serve as an iteration callback.
+        - Think of the code block within a for-each statement.
+      * Parameters:
+        1. `gravity_hash_t *hashtable`: Current hashtable.
+        2. `gravity_value_t key`: Current key.
+        3. `gravity_value_t value`: Current value.
+        4. `void *data`: The raw data originally passed to `gravity_hash_create`.
+      * Returns nothing.
+    5. `void *data`: Raw data to be bound to the hashtable (used in the iterator callbacks).
+  * Returns a fresh hashtable.
+- `void gravity_hash_free (*self);`
+  * Description: Free a hashtable
+  * Returns nothing
+- `bool gravity_hash_isempty (*self);`: Test wether a hashtable is empty or not.
+- `bool gravity_hash_remove  (*self, gravity_value_t key);`
+  * Description: Remove a given value by it's key.
+  * Parameters:
+    2. `gravity_value_t key`: The key corresponding to the value to be removed.
+  * Returns wether the removal was successful or not.
+- `bool gravity_hash_insert (*self, gravity_value_t key, gravity_value_t value);`
+  * Description: Insert a key-value pair into a hashtable.
+  * Parameters:
+    2. `gravity_value_t key`: The key to be used for the insertion.
+    3. `gravity_value_t value`: The value to be inserted.
+  * Returns wether the insertion was successful or not.
+- `gravity_value_t *gravity_hash_lookup (*self, gravity_value_t key);`
+  * Description: Retrive a value from a hashtable.
+  * Parameters:
+    2. `gravity_value_t key`: The key to be used for the lookup.
+  * Returns the requested value.
+- `gravity_value_t *gravity_hash_lookup_cstring (*self, const char *key);`
+  * Description: Retrive a value from a hashtable, by using a C string.
+    - This is essentially the same as: `gravity_hash_lookup(ht, VALUE_FROM_STRING("key"))`
+    - This requires the hashtable to use string-keys, I think.
+  * Parameters:
+    2. `const char *key`: The key to be used for the lookup.
+  * Returns the requested value.
+- `uint32_t gravity_hash_memsize (*self);`: Retrive the total size this hashtable uses in memory.
+- `uint32_t gravity_hash_count (*self);`: Return the amount of values stored in this hashtable.
+- `uint32_t gravity_hash_compute_buffer (const char *key, uint32_t len);`: ???
+- `uint32_t gravity_hash_compute_int (gravity_int_t n);`: ???
+- `uint32_t gravity_hash_compute_float (gravity_float_t f);`: ???
+- `void gravity_hash_stat (*self);`: ???
+- `void gravity_hash_iterate (*self, gravity_hash_iterate_fn iterate, void *data);`
+  * Description: Iterate through a hashtable (think for-each).
+  * Parameters:
+    2. `gravity_hash_iterate_fn iterate`: Iteration callback (see `gravity_hash_create`'s 4th parameter).
+    3. `void *data`: Native data to bind to the iteration
+  * Returns nothing.
+- `void gravity_hash_iterate2 (*self, gravity_hash_iterate2_fn iterate, void *data1, void *data2);`
+  * Description: Iterate through a hashtable.
+    - Same as above, but with two instead of one `void*`.
+    - In fact, the `gravity_hash_iterate2_fn` is equally defined to `gravity_hash_iterate_fn` but with an additional `void*` at the end.
+- `void gravity_hash_transform (*self, gravity_hash_transform_fn iterate, void *data);`
+  * Description: Transform the contents of a hashtable.
+  * Parameters:
+    2. `gravity_hash_transform_fn iterate`: The callback for the transformation.
+      * Definition of `gravity_hash_transform_fn`: `void f(*self, gravity_value_t key, gravity_value_t *value, void *data)`
+      * Description: Perform value transformation on each element of a hashtable.
+      * Parameters:
+        2. `gravity_value_t key`: The current key.
+        3. `gravity_value_t *value`: A pointer to the current value.
+          - Remember to de-ref it before using the `VALUE_` macros.
+          - I.e.: `VALUE_ISA_STRING(&value)`
+        4. `void *data`: Native data bound to this callback.
+      * Returns nothing.
+    3. `void *data`: Native data to be bound to the callback.
+  * Returns nothing.
+- `void gravity_hash_dump (gravity_hash_t *hashtable);`: ???
+- `void gravity_hash_append (gravity_hash_t *hashtable1, gravity_hash_t *hashtable2);`
+  * Description: Append the second hashtable to the first (right-to-left assignment).
+  * Parameters:
+    1. `gravity_hash_t *hashtable1`: Left-hand operand.
+    2. `gravity_hash_t *hashtable2`: Right-hand operand.
+  * Returns nothing - but `hashtable1` will now also hold values of `hashtable2`.
+- `void gravity_hash_resetfree (gravity_hash_t *hashtable);`: ???
+- `bool gravity_hash_compare (gravity_hash_t *hashtable1, gravity_hash_t *hashtable2, gravity_hash_compare_fn compare, void *data);`
+  * Description: Compare two hashtables.
+  * Parameters:
+    1. `gravity_hash_t *hashtable1`: Left-hand operand.
+    2. `gravity_hash_t *hashtable2`: Right-hand operand.
+    3. `gravity_hash_compare_fn compare`: Comparsion callback.
+      * Definition of `gravity_hash_compare_fn`: `bool f(gravity_value_t value1, gravity_value_t value2, void *data)`
+      * Description: Compare two values - one coming from `hashtable1` and the other from `hashtable2`.
+      * Parameters:
+        1. `gravity_value_t value1`: Left-hand operand (from `hashtable1`).
+        2. `gravity_value_t value2`: Right-hand operand (from `hashtable2`).
+        3. `void *data`: Native data bound to this callback.
+      * Returns wether the two values are equal or not.
+    4. `void *data`: Native data to be bound to the callback.
+  * Returns wether the hashtables are equal or not.
+
+#### `gravity_macros.h`
+
+#### `gravity_memory.h`
+
+#### `gravity_opcodes.h`
+
+#### `gravity_value.h`
+
+### `util/`
